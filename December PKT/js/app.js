@@ -103,8 +103,25 @@ class Mover{
 }
 
 class Tile{
-    constructor(){
-        
+    constructor(x,y){
+        this.x = x;
+        this.y = y;
+        this.rad = 20;
+    }
+    draw(){
+        c.beginPath();
+        c.moveTo(this.x, this.y + this.rad);
+        c.lineTo(this.x - Math.cos(Math.PI/6)*this.rad, this.y + Math.sin(Math.PI/6)*this.rad);
+        c.lineTo(this.x - Math.cos(Math.PI/6)*this.rad, this.y - Math.sin(Math.PI/6)*this.rad);
+        c.lineTo(this.x, this.y - this.rad);
+        c.lineTo(this.x + Math.cos(Math.PI/6)*this.rad, this.y - Math.sin(Math.PI/6)*this.rad);
+        c.lineTo(this.x + Math.cos(Math.PI/6)*this.rad, this.y + Math.sin(Math.PI/6)*this.rad);
+        c.lineTo(this.x, this.y + this.rad);
+        c.stroke();
+        c.closePath();
+    }
+    update(){
+        this.draw();
     }
 }
 
@@ -117,10 +134,18 @@ let target = {x:can.width/2,y:can.height/2};
 let x = new Mover(150,150);
 let y = new Mover(250,250);
 
+let z = [];
+
+for(i = 0; i < 100; i++){
+    let z1 = new Tile(35*i,50);
+    z.push(z1);
+}
+
 let mainLoop = ()=>{
     c.clearRect(0,0,can.width,can.height);
     x.update();
     y.update();
+    z.forEach((e)=>e.update());
     wraf = window.requestAnimationFrame(mainLoop);
 };
 
