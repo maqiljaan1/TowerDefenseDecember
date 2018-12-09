@@ -1,33 +1,55 @@
+//////// Stage Objects
 document.body.style.padding = '0px';
 document.body.style.margin = '0px';
 const can = document.querySelector('canvas');
 can.width = window.innerWidth * 0.999;
 can.height = window.innerHeight * 0.9920;
 can.style.margin = '0px';
-
 can.style.border = '1px solid black';
 
 const bbox = can.getBoundingClientRect();
-
 const c = can.getContext('2d');
 
 
+///////// Constants that reduce computations
+const deg30cos = Math.cos(Math.PI/6);
+const deg30sin = Math.sin(Math.PI/6);
+const hexRad = 50
+const hexWidth = deg30cos*hexRad;
+const hexHeight = deg30sin*hexRad;
+
+//////// Settings
+c.textAlign = 'center';
+
+// Declaring request animation frame for the ability to pause things later
+let wraf = null;
+
+//////// Arrays
+let aPath = [
+    14,15,16,17,31,45,44,43,56,70,84,85,86,87,74,60,47,33,19,20,21,35,49,62,77,78,79,65,52,38,39,40,41
+];
+
+//////// Classes
 class Mover{
-    constructor(x,y){
+    constructor(x,y,path){
         this.x = x;
         this.y = y;
         this.rad = 10;
-        this.tx = 0;
-        this.ty = 0;
-        this.speed = 5;
+        this.path = path;
+        this.currentTarget = 1;
+        this.tx = tiles[this.path[this.currentTarget]].x;
+        this.ty = tiles[this.path[this.currentTarget]].y;
+        this.speed = 2;
         this.originalSpeed = this.speed; // after moving from one point to another with acceleration speed starts to accumulate
         this.slope = 0;
         this.sx = 0;
         this.sy = 0;
         this.distance = 0;
-        this.accel = 0.05;
+        this.accel = 0.0;// zero for now
         this.destinationReached = false;
         this.maxSpeed = 15;
+        this.path = path;
+        this.hp = 1000;
     }
     draw(){
         c.beginPath();
@@ -39,7 +61,7 @@ class Mover{
         }
         c.arc(this.x,this.y,this.rad,0,Math.PI*2);
         c.fill();
-        //c.stroke();
+        c.stroke();
         c.closePath();
     }
     update(){
@@ -47,11 +69,15 @@ class Mover{
         if(this.x == this.tx && this.y == this.ty){
             this.speed = this.originalSpeed;
             this.destinationReached = true;
+            if(this.currentTarget<this.path.length){
+                this.currentTarget += 1;
+            }
+            
         }
         if(this.speed < this.maxSpeed) this.speed += this.accel;
         //this.slope = (this.ty - this.y) / (this.tx - this.x);
-        this.tx = target.x;
-        this.ty = target.y;
+        this.tx = tiles[this.path[this.currentTarget]].x;
+        this.ty = tiles[this.path[this.currentTarget]].y;
 
         this.distance = Math.sqrt((this.ty - this.y) * (this.ty - this.y) + (this.tx - this.x) * (this.tx - this.x));
 
@@ -106,6 +132,8 @@ class Mover{
     }
 }
 
+class Level{
+}
 
 // this is a hexagon tile
 class Tile{
@@ -113,75 +141,92 @@ class Tile{
         this.x = x;
         this.y = y;
         this.rad = rad;
-		this.id = id;
+        this.id = id;
+        this.isPath = false;
+        this.area = this.rad * deg30cos; // it is more convenient to determin thing that get inside the hex using this
+        this.penalty = 0;
+
     }
     draw(){
-		c.fillStyle = `rgba(${36},${36},${255},${1})`;
-		c.strokeStyle = `rgba(${255},${255},${25},${1})`;
+        
         c.beginPath();
-		
+
+        if(this.isPath){
+            c.fillStyle = `rgba(${55},${55},${255},${1})`;
+		    c.strokeStyle = `rgba(${255},${255},${255},${0.5})`;
+        }else{
+            c.fillStyle = `rgba(${255},${55},${255},${1})`;
+		    c.strokeStyle = `rgba(${255},${255},${255},${0.5})`;
+        }
+
         c.moveTo(this.x, this.y + this.rad);
-        c.lineTo(this.x - Math.cos(Math.PI/6)*this.rad, this.y + Math.sin(Math.PI/6)*this.rad);
-        c.lineTo(this.x - Math.cos(Math.PI/6)*this.rad, this.y - Math.sin(Math.PI/6)*this.rad);
+        c.lineTo(this.x - deg30cos*this.rad, this.y + deg30sin*this.rad);
+        c.lineTo(this.x - deg30cos*this.rad, this.y - deg30sin*this.rad);
         c.lineTo(this.x, this.y - this.rad);
-        c.lineTo(this.x + Math.cos(Math.PI/6)*this.rad, this.y - Math.sin(Math.PI/6)*this.rad);
-        c.lineTo(this.x + Math.cos(Math.PI/6)*this.rad, this.y + Math.sin(Math.PI/6)*this.rad);
+        c.lineTo(this.x + deg30cos*this.rad, this.y - deg30sin*this.rad);
+        c.lineTo(this.x + deg30cos*this.rad, this.y + deg30sin*this.rad);
         c.lineTo(this.x, this.y + this.rad);
 		c.fill();
         c.stroke();
         c.closePath();
 		
 		c.beginPath();
-		c.arc(this.x,this.y,this.rad*Math.cos(Math.PI/6),0,2*Math.PI);
+		c.arc(this.x,this.y,this.area,0,2*Math.PI);
 		c.stroke();
 		c.closePath();
-		
-		c.fillText(this.id,this.x,this.y);
+        
+        
+        c.fillStyle = 'black';
+        c.strokeStyle = 'black';
+        c.fillText(this.id,this.x,this.y);
+        
+    }
+    checkColision(){
+        if((this.x - target.x) * (this.x - target.x) + (this.y - target.y) * (this.y - target.y ) < this.area * this.area){
+            this.isPath = true;
+        }
     }
     update(){
+        this.checkColision();
         this.draw();
     }
 }
 
-// Declaring request animation frame for the ability to pause things later
-let wraf = null;
+// this loop creates the tiles
+let tiles = [];
+let hTileCount = 14;
+let vTileCount = 7;
 
-// this is where I click
-let target = {x:can.width/2,y:can.height/2};
-
-let y = new Mover(250,250);
-
-let z = [];
-
-// this is one bad naming convention
-const hexRad = 30
-
-c.textAlign = 'center';
-
-for(j = 0; j < 15; j++){
-	let offset = 0;
+for(j = 0; j < vTileCount; j++){
+    let offset = 0;
+    
 	if(j%2==0){
 		offset = 1;
 	}else{
 		offset = 0;
 	}
 	
-	for(i = 0; i < 26; i++){
-		let z1 = new Tile(offset*(Math.cos(Math.PI/6)*hexRad)+(2*i+1)*(Math.cos(Math.PI/6)*hexRad),2*hexRad*j-j*Math.sin(Math.PI/6)*hexRad,hexRad,`${j}:${i}`);
-		z.push(z1);
+	for(i = 0; i < hTileCount; i++){
+		let aTile = new Tile(hexWidth + offset*(hexWidth)+(2*i+1)*(hexWidth),2*hexRad+ 2*hexRad*j-j*hexHeight,hexRad,`${j*hTileCount+i}`);
+		tiles.push(aTile);
 	}
 }
 
+
+// this is where I click
+let target = {x:tiles[hTileCount].x,y:tiles[hTileCount].y};
+
+let y = new Mover(tiles[hTileCount].x,tiles[hTileCount].y,aPath);
+
 let mainLoop = ()=>{
     c.clearRect(0,0,can.width,can.height);
-	z.forEach((e,i)=>{e.update();});
+	tiles.forEach((e,i)=>{e.update();});
     y.update();
     
     wraf = window.requestAnimationFrame(mainLoop);
 };
 
 mainLoop();
-
 
 can.onclick = (e)=> {
     target.x = e.clientX -bbox.left;
